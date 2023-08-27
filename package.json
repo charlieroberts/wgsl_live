@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@iizukak/codemirror-lang-wgsl": "github:iizukak/codemirror-lang-wgsl",
+    "@rollup/plugin-node-resolve": "^15.2.1",
+    "codemirror": "^6.0.1",
+    "rollup": "^3.28.1"
+  },
+  "scripts": {
+    "build":"node_modules/.bin/rollup main.js -o editor.bundle.js   -p @rollup/plugin-node-resolve",
+    "start":"npx http-server ."
+  }
+}
