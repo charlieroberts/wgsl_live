@@ -22,8 +22,6 @@ let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
 @group(0) @binding(3) var<uniform> mouse: vec3f;
 @group(0) @binding(4) var backSampler:    sampler;
 @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
-@group(0) @binding(6) var videoSampler:   sampler;
-@group(1) @binding(0) var videoBuffer:    texture_external;
 `
 frag_start += noise
 frag_start += constants
@@ -45,7 +43,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }`
 
 const init = async function() {
-  await Video.start()
+  //await Video.start()
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
@@ -68,7 +66,7 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  .textures([ Video.element ])
+  //.textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ]

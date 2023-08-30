@@ -21,7 +21,7 @@ fn lastframe( pos : vec2f ) -> vec4f {
 }
 
 fn video( pos : vec2f ) -> vec4f {
-  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+  return vec4(0.); //textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
 }
 `
 

@@ -164,21 +164,6 @@ const seagulls = {
       });
     }
 
-    if( textures !== null ) {
-      textures.forEach( tex => {
-        entries.push({
-          binding:count++,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {}
-        });
-        //entries.push({
-        //  binding:count++,
-        //  visibility: GPUShaderStage.FRAGMENT,
-        //  externalTexture: {}
-        //})
-      });
-    }
-
     if( shouldAddBuffer ) {
       for( let i = 0; i < shouldAddBuffer; i++ ) {
         entries.push({
@@ -250,25 +235,26 @@ const seagulls = {
       entriesB.push( textureuni );
     }
 
+    /*
     if( textures !== null ) {
       textures.forEach( tex => {
         const sampler = device.createSampler({
           magFilter: 'linear',
           minFilter: 'linear'
-        });
+        })
         const sampleruni = {
           binding: count++,
           resource: sampler
-        };
-        /*const textureuni = {
-          binding: count++,
-          resource: device.importExternalTexture({ source:tex.src })
-        }*/
+        }
+        //const textureuni = {
+        //  binding: count++,
+        //  resource: device.importExternalTexture({ source:tex.src })
+        //}
 
-        entriesA.push( sampleruni );
-        entriesB.push( sampleruni );
-      });
-    }
+        entriesA.push( sampleruni )
+        entriesB.push( sampleruni )
+      })
+    }*/
 
 
     if( buffers !== null ) {
@@ -334,20 +320,21 @@ const seagulls = {
       code
     });
 
+    /* XXX MUST add this to the bind group layout for video to work */
     const externalEntry = {
       binding: 0,
       visibility: GPUShaderStage.FRAGMENT,
       externalTexture:{}
     };
 
-    const externalLayout = device.createBindGroupLayout({
+    device.createBindGroupLayout({
       label:'external layout',
       entries:[ externalEntry ]
     });
 
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
-      bindGroupLayouts: [ bindGroupLayout, externalLayout ],
+      bindGroupLayouts: [ bindGroupLayout ]//, externalLayout ],<- XXX enable video
     });
 
     const pipeline = device.createRenderPipeline({
@@ -490,7 +477,7 @@ const seagulls = {
       }]
     };
 
-    const externalLayout = device.createBindGroupLayout({
+    device.createBindGroupLayout({
       label:'external layout',
       entries:[{
         binding:0,
@@ -498,29 +485,6 @@ const seagulls = {
         externalTexture: {}
       }]
     });
-    
-    let resource = null;
-
-    //try {
-    //      }catch(e) {
-    //  console.log( e )
-    //  shouldBind = false
-    //}
-    resource = device.importExternalTexture({
-        source:textures[0]
-      });
-
-    let externalTextureBindGroup = null;
-
-    {
-		  externalTextureBindGroup = device.createBindGroup({
-			  layout: externalLayout,
-			  entries: [{
-          binding: 0,
-          resource
-		    }]
-		  }); 
-    }
 
     // additional setup.
 
@@ -529,16 +493,16 @@ const seagulls = {
     let swapChainTexture = null;
     if( shouldCopy ) {
       swapChainTexture = context.getCurrentTexture();
-      //renderPassDescriptor.colorAttachments[0].view = swapChainTexture.createView()
+      renderPassDescriptor.colorAttachments[0].view = swapChainTexture.createView();
     }
 
     const pass = encoder.beginRenderPass( renderPassDescriptor );
     pass.setPipeline( pipeline );
     pass.setVertexBuffer( 0, vertexBuffer );
-    pass.setBindGroup( 0, bindGroups[ idx] );
-    { 
-      pass.setBindGroup( 1, externalTextureBindGroup ); 
-    }
+    pass.setBindGroup( 0, bindGroups[ idx++ % 2 ] );
+    //if( shouldBind ) { 
+    //  pass.setBindGroup( 1, externalTextureBindGroup ) 
+    //}
     pass.draw(6, count);  
     pass.end();
 
@@ -25831,24 +25795,9 @@ fn lastframe( pos : vec2f ) -> vec4f {
 }
 
 fn video( pos : vec2f ) -> vec4f {
-  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+  return vec4(0.); //textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
 }
 `;
-
-const Video = {
-  async start() {
-    const video = document.createElement('video');
-    document.body.appendChild( video );
-
-    if (navigator.mediaDevices.getUserMedia) {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      Video.srcObject = stream;
-      Video.element = video;
-      await video.play();
-    }
-  }
-};
 
 const vertex = `
 @vertex 
@@ -25863,8 +25812,6 @@ let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
 @group(0) @binding(3) var<uniform> mouse: vec3f;
 @group(0) @binding(4) var backSampler:    sampler;
 @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
-@group(0) @binding(6) var videoSampler:   sampler;
-@group(1) @binding(0) var videoBuffer:    texture_external;
 `;
 frag_start += n;
 frag_start += c;
@@ -25886,7 +25833,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }`;
 
 const init = async function() {
-  await Video.start();
+  //await Video.start()
   setupEditor();
   setupMouse();
   document.getElementById('audio').onclick = e => Audio.start();
@@ -25909,7 +25856,7 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  .textures([ Video.element ])
+  //.textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++;
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ];

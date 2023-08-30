@@ -165,18 +165,18 @@ const seagulls = {
     }
 
     if( textures !== null ) {
-      textures.forEach( tex => {
-        entries.push({
-          binding:count++,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {}
-        })
-        //entries.push({
-        //  binding:count++,
-        //  visibility: GPUShaderStage.FRAGMENT,
-        //  externalTexture: {}
-        //})
-      })
+      //textures.forEach( tex => {
+      //  entries.push({
+      //    binding:count++,
+      //    visibility: GPUShaderStage.FRAGMENT,
+      //    sampler: {}
+      //  })
+      //  //entries.push({
+      //  //  binding:count++,
+      //  //  visibility: GPUShaderStage.FRAGMENT,
+      //  //  externalTexture: {}
+      //  //})
+      //})
     }
 
     if( shouldAddBuffer ) {
@@ -250,6 +250,7 @@ const seagulls = {
       entriesB.push( textureuni )
     }
 
+    /*
     if( textures !== null ) {
       textures.forEach( tex => {
         const sampler = device.createSampler({
@@ -260,15 +261,15 @@ const seagulls = {
           binding: count++,
           resource: sampler
         }
-        /*const textureuni = {
-          binding: count++,
-          resource: device.importExternalTexture({ source:tex.src })
-        }*/
+        //const textureuni = {
+        //  binding: count++,
+        //  resource: device.importExternalTexture({ source:tex.src })
+        //}
 
         entriesA.push( sampleruni )
         entriesB.push( sampleruni )
       })
-    }
+    }*/
 
 
     if( buffers !== null ) {
@@ -334,6 +335,7 @@ const seagulls = {
       code
     })
 
+    /* XXX MUST add this to the bind group layout for video to work */
     const externalEntry = {
       binding: 0,
       visibility: GPUShaderStage.FRAGMENT,
@@ -347,7 +349,7 @@ const seagulls = {
 
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
-      bindGroupLayouts: [ bindGroupLayout, externalLayout ],
+      bindGroupLayouts: [ bindGroupLayout ]//, externalLayout ],<- XXX enable video
     });
 
     const pipeline = device.createRenderPipeline({
@@ -499,17 +501,18 @@ const seagulls = {
       }]
     })
     
-    let resource = null, shouldBind = true
+    let resource = null, shouldBind = false
 
     //try {
     //      }catch(e) {
     //  console.log( e )
     //  shouldBind = false
     //}
-    resource = device.importExternalTexture({
+    if( shouldBind ) {
+      resource = device.importExternalTexture({
         source:textures[0]
       })
-
+    }
     let externalTextureBindGroup = null
 
     if( shouldBind ) {
@@ -535,10 +538,10 @@ const seagulls = {
     const pass = encoder.beginRenderPass( renderPassDescriptor )
     pass.setPipeline( pipeline )
     pass.setVertexBuffer( 0, vertexBuffer )
-    pass.setBindGroup( 0, bindGroups[ idx] )
-    if( shouldBind ) { 
-      pass.setBindGroup( 1, externalTextureBindGroup ) 
-    }
+    pass.setBindGroup( 0, bindGroups[ idx++ % 2 ] )
+    //if( shouldBind ) { 
+    //  pass.setBindGroup( 1, externalTextureBindGroup ) 
+    //}
     pass.draw(6, count)  
     pass.end()
 
