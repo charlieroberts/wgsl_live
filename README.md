@@ -1,7 +1,7 @@
 # wgsl_live
 
 ## Try it
-Make sure you're running Chrome or Edge on Windows or macOS. Firefox Nightly can work for some features (including for Linux). 
+Make sure you're running Chrome or Edge on Windows or macOS. Firefox Nightly can work for some features (including for Linux). I personally haven't had much luck with Chromium / Chrome under Linux but you might do better, especially if you have a NVIDIA graphics card.
 [Playground](https://charlieroberts.github.io/wgsl_live)
 
 ## What is it?
