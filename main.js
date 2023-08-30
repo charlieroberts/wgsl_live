@@ -7,6 +7,7 @@ import { defaultKeymap } from "@codemirror/commands";
 import { default as Audio } from "./audio.js"
 import { default as noise } from "./noise.js"
 import { default as constants } from "./constants.js"
+import { default as Video } from "./video.js"
 
 const vertex = `
 @vertex 
@@ -19,10 +20,11 @@ let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
 @group(0) @binding(1) var<uniform> res:   vec2f;
 @group(0) @binding(2) var<uniform> audio: vec3f;
 @group(0) @binding(3) var<uniform> mouse: vec3f;
-@group(0) @binding(4) var backSampler: sampler;
-@group(0) @binding(5) var backBuffer: texture_2d<f32>;
+@group(0) @binding(4) var backSampler:    sampler;
+@group(0) @binding(5) var backBuffer:     texture_2d<f32>;
+@group(0) @binding(6) var videoSampler:   sampler;
+@group(1) @binding(0) var videoBuffer:    texture_external;
 `
-
 frag_start += noise
 frag_start += constants
 
@@ -42,20 +44,21 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( red, green, blue, 1. );
 }`
 
-window.onload = function() {
-  runGraphics()
+const init = async function() {
+  await Video.start()
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
+  await runGraphics()
 }
+
+window.onload = init
 
 async function runGraphics( code = null) {
   let frame = 0
   code = code === null ? frag_start + shader : frag_start + code
 
   code = vertex + code 
-
-  console.log(  )
 
   const sg = await seagulls.init()
 
@@ -65,6 +68,7 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
+  .textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ]

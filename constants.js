@@ -15,6 +15,14 @@ const lime:vec3f = vec3f(0.361,0.969,0.282);
 const teal:vec3f = vec3f(0.396,0.878,0.878);
 const magenta:vec3f = vec3f(1.0, 0.189, 0.745);
 const brown:vec3f = vec3f(0.96, 0.474, 0.227);
+
+fn lastframe( pos : vec2f ) -> vec4f {
+  return textureSample( backBuffer, backSampler, pos );
+}
+
+fn video( pos : vec2f ) -> vec4f {
+  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+}
 `
 
 export default c

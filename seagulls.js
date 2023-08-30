@@ -13,6 +13,9 @@ const CONSTANTS = {
   workgroupSize: 8
 }
 
+// to "fix" inconsistencies with device.writeBuffer
+const mult = navigator.userAgent.indexOf('Chrome') === -1 ? 4 : 1
+
 let backTexture = null
 const seagulls = {
   CONSTANTS,
@@ -42,7 +45,8 @@ const seagulls = {
     context.configure({
       device,
       format,
-      alphaMode:'premultiplied'
+      alphaMode:'premultiplied',
+      usage:GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
     })
 
     canvas.width  = window.innerWidth
@@ -167,11 +171,11 @@ const seagulls = {
           visibility: GPUShaderStage.FRAGMENT,
           sampler: {}
         })
-        entries.push({
-          binding:count++,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {}
-        })
+        //entries.push({
+        //  binding:count++,
+        //  visibility: GPUShaderStage.FRAGMENT,
+        //  externalTexture: {}
+        //})
       })
     }
 
@@ -250,21 +254,19 @@ const seagulls = {
       textures.forEach( tex => {
         const sampler = device.createSampler({
           magFilter: 'linear',
-          minFilter: 'linear',
+          minFilter: 'linear'
         })
         const sampleruni = {
           binding: count++,
-          resource: sampler,
+          resource: sampler
         }
-        const textureuni = {
+        /*const textureuni = {
           binding: count++,
-          resource: tex.createView(),
-        }
+          resource: device.importExternalTexture({ source:tex.src })
+        }*/
 
         entriesA.push( sampleruni )
         entriesB.push( sampleruni )
-        entriesA.push( textureuni )
-        entriesB.push( textureuni )
       })
     }
 
@@ -332,9 +334,20 @@ const seagulls = {
       code
     })
 
+    const externalEntry = {
+      binding: 0,
+      visibility: GPUShaderStage.FRAGMENT,
+      externalTexture:{}
+    }
+
+    const externalLayout = device.createBindGroupLayout({
+      label:'external layout',
+      entries:[ externalEntry ]
+    })
+
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
-      bindGroupLayouts: [ bindGroupLayout ],
+      bindGroupLayouts: [ bindGroupLayout, externalLayout ],
     });
 
     const pipeline = device.createRenderPipeline({
@@ -398,8 +411,17 @@ const seagulls = {
     const storageLength = storage === null ? 0 : Object.keys(storage).length
 
     const renderLayout  = seagulls.createRenderLayout( device, 'seagull layout', storageLength, uniforms, true, textures )
-    const bindGroups    = seagulls._createPingPongBindGroups( device, renderLayout, storage, uniforms, 'render', true, textures)
-    const pipeline      = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout )
+    const bindGroups    = seagulls._createPingPongBindGroups( 
+      device, 
+      renderLayout, 
+      storage, 
+      uniforms, 
+      'render', 
+      true, 
+      textures
+    )
+
+    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout )
 
     return [ pipeline, bindGroups, quadBuffer ]
   },
@@ -455,7 +477,7 @@ const seagulls = {
   //  return idx
   //},
 
-  render( device, encoder, view, clearValue, vertexBuffer, pipeline, bindGroups, count=1, idx=0, context=null ) {
+  render( device, encoder, view, clearValue, vertexBuffer, pipeline, bindGroups, count=1, idx=0, context=null, textures=null ) {
     const shouldCopy = context !== null
 
     const renderPassDescriptor = {
@@ -468,6 +490,40 @@ const seagulls = {
       }]
     }
 
+    const externalLayout = device.createBindGroupLayout({
+      label:'external layout',
+      entries:[{
+        binding:0,
+        visibility: GPUShaderStage.FRAGMENT,
+        externalTexture: {}
+      }]
+    })
+    
+    let resource = null, shouldBind = true
+
+    //try {
+    //      }catch(e) {
+    //  console.log( e )
+    //  shouldBind = false
+    //}
+    resource = device.importExternalTexture({
+        source:textures[0]
+      })
+
+    let externalTextureBindGroup = null
+
+    if( shouldBind ) {
+		  externalTextureBindGroup = device.createBindGroup({
+			  layout: externalLayout,
+			  entries: [{
+          binding: 0,
+          resource
+		    }]
+		  }) 
+    }
+
+    // additional setup.
+
     // in case we want a backbuffer etc. eventually this should probably be
     // replaced with a more generic post-processing setup
     let swapChainTexture = null
@@ -479,8 +535,10 @@ const seagulls = {
     const pass = encoder.beginRenderPass( renderPassDescriptor )
     pass.setPipeline( pipeline )
     pass.setVertexBuffer( 0, vertexBuffer )
-    //pass.setBindGroup( 0, bindGroup  )
-    pass.setBindGroup( 0, bindGroups[ idx++%2 ]  )
+    pass.setBindGroup( 0, bindGroups[ idx] )
+    if( shouldBind ) { 
+      pass.setBindGroup( 1, externalTextureBindGroup ) 
+    }
     pass.draw(6, count)  
     pass.end()
 
@@ -520,7 +578,7 @@ const seagulls = {
           Object.defineProperty( buffer, i, {
             set(v) {
               storage[ i ] = v
-              device.queue.writeBuffer( buffer, i*4, storage, i*4, 4 )
+              device.queue.writeBuffer( buffer, i*4, storage, i*4, mult )
             },
             get() {
               return storage[ i ]
@@ -532,7 +590,7 @@ const seagulls = {
             storage.set( v )
             // apparently docs are wrong, all arguments are actually in bytes wtf
             // https://developer.mozilla.org/en-US/docs/Web/API/GPUQueue/writeBuffer
-            device.queue.writeBuffer( buffer, 0, storage, 0, v.length * 4 )
+            device.queue.writeBuffer( buffer, 0, storage, 0, v.length * mult )
           },
 
           get() {
@@ -543,7 +601,7 @@ const seagulls = {
         Object.defineProperty( manager, k, {
           set( v ) {
             storage[ 0 ] = v
-            device.queue.writeBuffer( buffer, 0, storage, 0, 4 )
+            device.queue.writeBuffer( buffer, 0, storage, 0, mult )
           },
           get() {
             return buffer
@@ -574,6 +632,7 @@ const seagulls = {
       times:      1,
       clearColor: [0,0,0,1],
       __computeStages: [],
+      __textures:null
     })
 
     return instance
@@ -595,11 +654,13 @@ const seagulls = {
     },
 
     textures( _textures ) {
-      this.__textures = _textures.map( tex => {
+      this.__textures = _textures/*textures.map( tex => {
         const t = seagulls.createTexture( this.device, this.presentationFormat, this.canvas )
         t.src = tex
         return t
-      })
+      })*/
+
+      return this
     },
 
     clear( clearColor ) {
@@ -707,7 +768,8 @@ const seagulls = {
         this.renderBindGroups,
         instanceCount,
         this.renderStep,
-        this.context
+        this.context,
+        this.__textures
       )
 
       if( time === null ) {
