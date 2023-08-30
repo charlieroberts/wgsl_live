@@ -43,6 +43,11 @@ lastframe( vec2f ) -> vec4f - expects normalized texture coordinates, and return
 
 video( vec2f ) -> vec4f - CURRENTLY BROKEN. expects noramlized texture coordinates, and returns a sample from the webcam feed.
 
+/* NOISE FUNCTIONS */
 
+noise2( vec2f ) -> f32 - 2D value noise
+simplex2( vec2 ) -> f32 - 2D simplex noise
+perlin2( vec2f ) -> f32 - 2D Perlin noise
+perlin3( vec3f ) -> f32 - 3D Perlin noise
 
 ```
