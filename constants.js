@@ -2,6 +2,7 @@ const c = `
 const PI :f32 = 3.14159;
 const PI2:f32 = 6.28318;
 
+// colors adapted from The Force by Shawn Lawson
 const black:vec3f = vec3f(0.0, 0.0, 0.0);
 const white:vec3f = vec3f(1.0,1.0,1.0);
 const red:vec3f = vec3f(0.86,0.22,0.27);
@@ -22,6 +23,22 @@ fn lastframe( pos : vec2f ) -> vec4f {
 
 fn video( pos : vec2f ) -> vec4f {
   return vec4(0.); //textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+}
+
+fn uv( pos: vec2f ) -> vec2f {
+  return 2. * (pos.xy / res) - 1.;
+}
+
+fn uvN( pos: vec2f ) -> vec2f {
+  return pos.xy / res;
+}
+
+fn seconds() -> f32 {
+  return frame / 60.;
+}
+
+fn ms() -> f32 {
+  return frame / 60. / 1000.;
 }
 `
 
