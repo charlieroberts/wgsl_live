@@ -1,4 +1,7 @@
 # wgsl_live
+
+[Playground](https://charlieroberts.github.io/wgsl_live)
+
 This is a system for live coding fragment shaders using WGSL / WebGPU. Current features include:
 
 - Live video textures and FFT audio analysis
