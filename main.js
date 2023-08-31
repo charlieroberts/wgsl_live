@@ -8,6 +8,7 @@ import { default as Audio } from "./audio.js"
 import { default as noise } from "./noise.js"
 import { default as constants } from "./constants.js"
 import { default as Video } from "./video.js"
+import { basicDark } from 'cm6-theme-basic-dark'
 
 const vertex = `
 @vertex 
@@ -94,7 +95,8 @@ const setupEditor = function() {
     extensions: [
       basicSetup, 
       wgsl(),
-      p
+      p,
+      basicDark
     ],
     parent: document.body,
   })
