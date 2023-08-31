@@ -2,7 +2,9 @@
 
 ## Try it
 Make sure you're running Chrome or Edge on Windows or macOS. Firefox Nightly can work for some features (including for Linux). I personally haven't had much luck with Chromium / Chrome under Linux but you might do better, especially if you have a NVIDIA graphics card.
-[Playground](https://charlieroberts.github.io/wgsl_live)
+
+- [Playground](https://charlieroberts.github.io/wgsl_live)
+- [Intro Tutorial](https://github.com/imgd-4099-2023/imgd-4099-2023/blob/main/notes.day1.intro_to_shaders.md)
 
 ## What is it?
 This is a system for live coding fragment shaders using WGSL / WebGPU. Current features include:
