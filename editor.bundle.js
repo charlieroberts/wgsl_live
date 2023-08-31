@@ -25638,7 +25638,7 @@ fn rand2(n: vec2f) -> f32 {
   return fract(sin(dot(n, vec2f(12.9898, 4.1414))) * 43758.5453);
 }
 
-fn noise(n: vec2f) -> f32 {
+fn noise2(n: vec2f) -> f32 {
   let d = vec2f(0., 1.);
   let b = floor(n);
   let f = smoothstep(vec2f(0.), vec2f(1.), fract(n));
@@ -25649,7 +25649,7 @@ fn noise(n: vec2f) -> f32 {
 fn permute4(x: vec4f) -> vec4f { return ((x * 34. + 1.) * x) % vec4f(289.); }
 fn fade2(t: vec2f) -> vec2f { return t * t * t * (t * (t * 6. - 15.) + 10.); }
 
-fn perlin(P: vec2f) -> f32 {
+fn perlin2(P: vec2f) -> f32 {
   var Pi: vec4f = floor(P.xyxy) + vec4f(0., 0., 1., 1.);
   let Pf = fract(P.xyxy) - vec4f(0., 0., 1., 1.);
   Pi = Pi % vec4f(289.); // To avoid truncation effects in permutation
@@ -25697,7 +25697,7 @@ fn permute3(x: vec3f) -> vec3f {
 }
 
 //  MIT License. © Ian McEwan, Stefan Gustavson, Munrocket
-fn simplex(v: vec2f) -> f32 {
+fn simplex2(v: vec2f) -> f32 {
     let C = vec4(
         0.211324865405187, // (3.0-sqrt(3.0))/6.0
         0.366025403784439, // 0.5*(sqrt(3.0)-1.0)
@@ -25833,6 +25833,7 @@ const c = `
 const PI :f32 = 3.14159;
 const PI2:f32 = 6.28318;
 
+// colors adapted from The Force by Shawn Lawson
 const black:vec3f = vec3f(0.0, 0.0, 0.0);
 const white:vec3f = vec3f(1.0,1.0,1.0);
 const red:vec3f = vec3f(0.86,0.22,0.27);
