@@ -329,28 +329,32 @@ const seagulls = {
 
     return bindGroups
   },
-  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout ) {
+  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, textures ) {
     const module = device.createShaderModule({
       label: 'main render',
       code
     });
 
-    /* XXX MUST add this to the bind group layout for video to work */
-    const externalEntry = {
-      binding: 0,
-      visibility: GPUShaderStage.FRAGMENT,
-      externalTexture:{}
-    };
-
-    const externalLayout = device.createBindGroupLayout({
-      label:'external layout',
-      entries:[ externalEntry ]
-    });
-
     const bindGroupLayouts = [ bindGroupLayout ];
-    if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+    const hasTexture = Array.isArray( textures ) 
+      ? textures[0] !== null 
+      : false;
+
+    if( navigator.userAgent.indexOf('Firefox') === -1 && hasTexture ) {
+      const externalEntry = {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        externalTexture:{}
+      };
+
+      const externalLayout = device.createBindGroupLayout({
+        label:'external layout',
+        entries:[ externalEntry ]
+      });
+
       bindGroupLayouts.push( externalLayout );
     }
+
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
       bindGroupLayouts
@@ -427,7 +431,7 @@ const seagulls = {
       textures
     );
 
-    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout );
+    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout, textures );
 
     return [ pipeline, bindGroups, quadBuffer ]
   },
@@ -505,28 +509,29 @@ const seagulls = {
       }]
     });
     
-    let resource = null, shouldBind = navigator.userAgent.indexOf('Firefox') === -1;
+    let resource = null, 
+        shouldBind = navigator.userAgent.indexOf('Firefox') === -1 && textures[0] !== null; 
 
-    //try {
-    //      }catch(e) {
-    //  console.log( e )
-    //  shouldBind = false
-    //}
-    if( shouldBind ) {
-      resource = device.importExternalTexture({
-        source:textures[0]
-      });
-    }
+    
     let externalTextureBindGroup = null;
 
-    if( shouldBind ) {
-		  externalTextureBindGroup = device.createBindGroup({
-			  layout: externalLayout,
-			  entries: [{
-          binding: 0,
-          resource
-		    }]
-		  }); 
+    if( shouldBind )  {
+      try {
+        resource = device.importExternalTexture({
+          source:textures[0]
+        });
+
+        externalTextureBindGroup = device.createBindGroup({
+          layout: externalLayout,
+          entries: [{
+            binding: 0,
+            resource
+          }]
+        }); 
+      }catch( e ) {
+        console.log( e );
+        shouldBind = false;
+      }
     }
 
     // additional setup.
@@ -25912,26 +25917,37 @@ fn ms() -> f32 {
 }
 `;
 
-if( navigator.userAgent.indexOf('Firefox') === -1 ) {
-  c += `fn video( pos : vec2f ) -> vec4f {
-  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
-}
-`;
-}
-
-var constants = c;
-
 const Video = {
-  async start() {
+  element:null,
+  hasPermissions: false,
+  async init() {
     const video = document.createElement('video');
+    video.style.display = 'none';
     document.body.appendChild( video );
+    return await Video.start( video )
+  },
 
+  async start( element ) {
     if (navigator.mediaDevices.getUserMedia) {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = element;
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch {
+        console.log( 'stream didnt work' );
+        return false
+      }
+
+      Video.element = video;
+      Video.hasPermissions = true;
+      // note that one is lowercase and we need both!
       video.srcObject = stream;
       Video.srcObject = stream;
-      Video.element = video;
       await video.play();
+      return true
+    }else {
+      console.warning( 'No video feed / webcam detected.' );
+      return false
     }
   }
 };
@@ -26111,28 +26127,7 @@ const basicDark = [
     /*@__PURE__*/syntaxHighlighting(basicDarkHighlightStyle)
 ];
 
-const vertex = `
-@vertex 
-fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
-  return vec4f( input, 0., 1.); 
-}
-`;
-
-let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
-@group(0) @binding(1) var<uniform> res:   vec2f;
-@group(0) @binding(2) var<uniform> audio: vec3f;
-@group(0) @binding(3) var<uniform> mouse: vec3f;
-@group(0) @binding(4) var backSampler:    sampler;
-@group(0) @binding(5) var backBuffer:     texture_2d<f32>;
-@group(0) @binding(6) var videoSampler:   sampler;
-`;
-if( navigator.userAgent.indexOf('Firefox') === -1 ) {
-frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`;
-}
-frag_start += n;
-frag_start += constants;
-
-const shader = `// PRESS CTRL+ENTER TO RELOAD SHADER
+const shaderDefault = `// PRESS CTRL+ENTER TO RELOAD SHADER
 // reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
@@ -26144,21 +26139,57 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( red, green, blue, 1. );
 }`;
 
+const shaderInit = function( frag=null ) {
+  const vertex = `
+  @vertex 
+  fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
+    return vec4f( input, 0., 1.); 
+  }
+  `;
+  
+  let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
+  @group(0) @binding(1) var<uniform> res:   vec2f;
+  @group(0) @binding(2) var<uniform> audio: vec3f;
+  @group(0) @binding(3) var<uniform> mouse: vec3f;
+  @group(0) @binding(4) var backSampler:    sampler;
+  @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
+  @group(0) @binding(6) var videoSampler:   sampler;
+  `;
+
+  let __constants = c;
+  if( navigator.userAgent.indexOf('Firefox') === -1 && Video.hasPermissions ) {
+    frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`;
+    __constants += `fn video( pos : vec2f ) -> vec4f {
+    return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+  }\n`;
+  }else {
+    __constants += `fn video( pos : vec2f ) -> vec4f {
+  return vec4f( 0. );
+}\n`;
+  }
+  frag_start += n;
+
+  const s =  vertex + frag_start + __constants + ( frag===null ? shaderDefault : frag );
+  return s
+};
+
 const init = async function() {
-  await Video.start();
+  // don't start video element if using Firefox
+  if( navigator.userAgent.indexOf( 'Firefox' ) === -1 ) {
+    await Video.init();
+  }
+
+  const shader = shaderInit();
   setupEditor();
   setupMouse();
   document.getElementById('audio').onclick = e => Audio.start();
-  await runGraphics();
+  await runGraphics( shader );
 };
 
 window.onload = init;
 
 async function runGraphics( code = null) {
   let frame = 0;
-  code = code === null ? frag_start + shader : frag_start + code;
-
-  code = vertex + code; 
 
   const sg = await seagulls.init();
 
@@ -26168,14 +26199,18 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  .textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++;
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ];
     sg.uniforms.mouse = [ mousex, mousey, mouseclick ];
-  })
-  .render( code, { uniforms:['frame','res', 'audio', 'mouse'] })
-  .run();
+  });
+
+  if( navigator.userAgent.indexOf('Firefox') === -1 ) { // && Video.hasPermissions ) {
+    sg.textures([ Video.element ]);
+  }
+  
+  sg.render( code, { uniforms:['frame','res', 'audio', 'mouse'] })
+    .run();
 }
 
 const setupEditor = function() {
@@ -26184,7 +26219,7 @@ const setupEditor = function() {
       { 
         key: "Ctrl-Enter", 
         run(e) { 
-          runGraphics( e.state.doc.toString() );
+          runGraphics( shaderInit( e.state.doc.toString() ) );
           return true
         } 
       }
@@ -26192,7 +26227,7 @@ const setupEditor = function() {
   );
 
   window.editor = new EditorView({
-    doc: shader,
+    doc: shaderDefault,
     extensions: [
       basicSetup, 
       wgsl(),

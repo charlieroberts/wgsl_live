@@ -10,28 +10,8 @@ import { default as constants } from "./constants.js"
 import { default as Video } from "./video.js"
 import { basicDark } from 'cm6-theme-basic-dark'
 
-const vertex = `
-@vertex 
-fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
-  return vec4f( input, 0., 1.); 
-}
-`
 
-let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
-@group(0) @binding(1) var<uniform> res:   vec2f;
-@group(0) @binding(2) var<uniform> audio: vec3f;
-@group(0) @binding(3) var<uniform> mouse: vec3f;
-@group(0) @binding(4) var backSampler:    sampler;
-@group(0) @binding(5) var backBuffer:     texture_2d<f32>;
-@group(0) @binding(6) var videoSampler:   sampler;
-`
-if( navigator.userAgent.indexOf('Firefox') === -1 ) {
-frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`
-}
-frag_start += noise
-frag_start += constants
-
-const shader = `// PRESS CTRL+ENTER TO RELOAD SHADER
+const shaderDefault = `// PRESS CTRL+ENTER TO RELOAD SHADER
 // reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
@@ -43,21 +23,58 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( red, green, blue, 1. );
 }`
 
+const shaderInit = function( frag=null ) {
+  const vertex = `
+  @vertex 
+  fn vs( @location(0) input : vec2f ) ->  @builtin(position) vec4f {
+    return vec4f( input, 0., 1.); 
+  }
+  `
+  
+  let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
+  @group(0) @binding(1) var<uniform> res:   vec2f;
+  @group(0) @binding(2) var<uniform> audio: vec3f;
+  @group(0) @binding(3) var<uniform> mouse: vec3f;
+  @group(0) @binding(4) var backSampler:    sampler;
+  @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
+  @group(0) @binding(6) var videoSampler:   sampler;
+  `
+
+  let __constants = constants
+  if( navigator.userAgent.indexOf('Firefox') === -1 && Video.hasPermissions ) {
+    frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`
+    __constants += `fn video( pos : vec2f ) -> vec4f {
+    return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+  }\n`
+  }else{
+    __constants += `fn video( pos : vec2f ) -> vec4f {
+  return vec4f( 0. );
+}\n`
+  }
+  frag_start += noise
+
+  const s =  vertex + frag_start + __constants + ( frag===null ? shaderDefault : frag )
+  return s
+}
+
 const init = async function() {
-  await Video.start()
+  let hasVideoPermissions = false
+  // don't start video element if using Firefox
+  if( navigator.userAgent.indexOf( 'Firefox' ) === -1 ) {
+    hasVideoPermissions = await Video.init()
+  }
+
+  const shader = shaderInit()
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
-  await runGraphics()
+  await runGraphics( shader )
 }
 
 window.onload = init
 
 async function runGraphics( code = null) {
   let frame = 0
-  code = code === null ? frag_start + shader : frag_start + code
-
-  code = vertex + code 
 
   const sg = await seagulls.init()
 
@@ -67,14 +84,18 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  .textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ]
     sg.uniforms.mouse = [ mousex, mousey, mouseclick ]
   })
-  .render( code, { uniforms:['frame','res', 'audio', 'mouse'] })
-  .run()
+
+  if( navigator.userAgent.indexOf('Firefox') === -1 ) { // && Video.hasPermissions ) {
+    sg.textures([ Video.element ])
+  }
+  
+  sg.render( code, { uniforms:['frame','res', 'audio', 'mouse'] })
+    .run()
 }
 
 const setupEditor = function() {
@@ -83,7 +104,7 @@ const setupEditor = function() {
       { 
         key: "Ctrl-Enter", 
         run(e) { 
-          runGraphics( e.state.doc.toString() )
+          runGraphics( shaderInit( e.state.doc.toString() ) )
           return true
         } 
       }
@@ -91,7 +112,7 @@ const setupEditor = function() {
   )
 
   window.editor = new EditorView({
-    doc: shader,
+    doc: shaderDefault,
     extensions: [
       basicSetup, 
       wgsl(),

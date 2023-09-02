@@ -329,32 +329,36 @@ const seagulls = {
 
     return bindGroups
   },
-  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout ) {
+  createRenderPipeline( device, code, presentationFormat, vertexBufferLayout, bindGroupLayout, textures ) {
     const module = device.createShaderModule({
       label: 'main render',
       code
     })
 
-    /* XXX MUST add this to the bind group layout for video to work */
-    const externalEntry = {
-      binding: 0,
-      visibility: GPUShaderStage.FRAGMENT,
-      externalTexture:{}
-    }
-
-    const externalLayout = device.createBindGroupLayout({
-      label:'external layout',
-      entries:[ externalEntry ]
-    })
-
     const bindGroupLayouts = [ bindGroupLayout ]
-    if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+    const hasTexture = Array.isArray( textures ) 
+      ? textures[0] !== null 
+      : false
+
+    if( navigator.userAgent.indexOf('Firefox') === -1 && hasTexture ) {
+      const externalEntry = {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        externalTexture:{}
+      }
+
+      const externalLayout = device.createBindGroupLayout({
+        label:'external layout',
+        entries:[ externalEntry ]
+      })
+
       bindGroupLayouts.push( externalLayout )
     }
+
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
       bindGroupLayouts
-    });
+    })
 
     const pipeline = device.createRenderPipeline({
       label: "render pipeline",
@@ -427,7 +431,7 @@ const seagulls = {
       textures
     )
 
-    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout )
+    const pipeline  = seagulls.createRenderPipeline( device, shader, presentationFormat, quadBufferLayout, renderLayout, textures )
 
     return [ pipeline, bindGroups, quadBuffer ]
   },
@@ -505,28 +509,29 @@ const seagulls = {
       }]
     })
     
-    let resource = null, shouldBind = navigator.userAgent.indexOf('Firefox') === -1
+    let resource = null, 
+        shouldBind = navigator.userAgent.indexOf('Firefox') === -1 && textures[0] !== null 
 
-    //try {
-    //      }catch(e) {
-    //  console.log( e )
-    //  shouldBind = false
-    //}
-    if( shouldBind ) {
-      resource = device.importExternalTexture({
-        source:textures[0]
-      })
-    }
+    
     let externalTextureBindGroup = null
 
-    if( shouldBind ) {
-		  externalTextureBindGroup = device.createBindGroup({
-			  layout: externalLayout,
-			  entries: [{
-          binding: 0,
-          resource
-		    }]
-		  }) 
+    if( shouldBind )  {
+      try {
+        resource = device.importExternalTexture({
+          source:textures[0]
+        })
+
+        externalTextureBindGroup = device.createBindGroup({
+          layout: externalLayout,
+          entries: [{
+            binding: 0,
+            resource
+          }]
+        }) 
+      }catch( e ) {
+        console.log( e )
+        shouldBind = false
+      }
     }
 
     // additional setup.

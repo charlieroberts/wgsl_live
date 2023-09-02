@@ -38,11 +38,6 @@ fn ms() -> f32 {
 }
 `
 
-if( navigator.userAgent.indexOf('Firefox') === -1 ) {
-  c += `fn video( pos : vec2f ) -> vec4f {
-  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
-}
-`
-}
+
 
 export default c
