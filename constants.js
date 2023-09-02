@@ -1,4 +1,4 @@
-const c = `
+let c = `
 const PI :f32 = 3.14159;
 const PI2:f32 = 6.28318;
 
@@ -21,10 +21,6 @@ fn lastframe( pos : vec2f ) -> vec4f {
   return textureSample( backBuffer, backSampler, pos );
 }
 
-fn video( pos : vec2f ) -> vec4f {
-  return vec4(0.); //textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
-}
-
 fn uv( pos: vec2f ) -> vec2f {
   return 2. * (pos.xy / res) - 1.;
 }
@@ -41,5 +37,12 @@ fn ms() -> f32 {
   return frame / 60. / 1000.;
 }
 `
+
+if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+  c += `fn video( pos : vec2f ) -> vec4f {
+  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+}
+`
+}
 
 export default c

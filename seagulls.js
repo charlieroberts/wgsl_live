@@ -165,18 +165,18 @@ const seagulls = {
     }
 
     if( textures !== null ) {
-      //textures.forEach( tex => {
-      //  entries.push({
-      //    binding:count++,
-      //    visibility: GPUShaderStage.FRAGMENT,
-      //    sampler: {}
-      //  })
-      //  //entries.push({
-      //  //  binding:count++,
-      //  //  visibility: GPUShaderStage.FRAGMENT,
-      //  //  externalTexture: {}
-      //  //})
-      //})
+      textures.forEach( tex => {
+        entries.push({
+          binding:count++,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {}
+        })
+        //entries.push({
+        //  binding:count++,
+        //  visibility: GPUShaderStage.FRAGMENT,
+        //  externalTexture: {}
+        //})
+      })
     }
 
     if( shouldAddBuffer ) {
@@ -250,7 +250,7 @@ const seagulls = {
       entriesB.push( textureuni )
     }
 
-    /*
+    
     if( textures !== null ) {
       textures.forEach( tex => {
         const sampler = device.createSampler({
@@ -269,7 +269,7 @@ const seagulls = {
         entriesA.push( sampleruni )
         entriesB.push( sampleruni )
       })
-    }*/
+    }
 
 
     if( buffers !== null ) {
@@ -347,9 +347,13 @@ const seagulls = {
       entries:[ externalEntry ]
     })
 
+    const bindGroupLayouts = [ bindGroupLayout ]
+    if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+      bindGroupLayouts.push( externalLayout )
+    }
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
-      bindGroupLayouts: [ bindGroupLayout ]//, externalLayout ],<- XXX enable video
+      bindGroupLayouts
     });
 
     const pipeline = device.createRenderPipeline({
@@ -501,7 +505,7 @@ const seagulls = {
       }]
     })
     
-    let resource = null, shouldBind = false
+    let resource = null, shouldBind = navigator.userAgent.indexOf('Firefox') === -1
 
     //try {
     //      }catch(e) {
@@ -539,9 +543,9 @@ const seagulls = {
     pass.setPipeline( pipeline )
     pass.setVertexBuffer( 0, vertexBuffer )
     pass.setBindGroup( 0, bindGroups[ idx++ % 2 ] )
-    //if( shouldBind ) { 
-    //  pass.setBindGroup( 1, externalTextureBindGroup ) 
-    //}
+    if( shouldBind ) { 
+      pass.setBindGroup( 1, externalTextureBindGroup ) 
+    }
     pass.draw(6, count)  
     pass.end()
 
@@ -699,7 +703,7 @@ const seagulls = {
         this.workgroupCount = 128//Math.round(this.canvas.width / 8)
       }
 
-      this.__computeStages.push( { 
+      this.__computeStages.push({ 
         simPipeline, simBindGroups, step:0, times:1, workgroupCount:this.workgroupCount  
       })
 

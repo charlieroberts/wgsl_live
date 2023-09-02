@@ -23,16 +23,16 @@ let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
 @group(0) @binding(3) var<uniform> mouse: vec3f;
 @group(0) @binding(4) var backSampler:    sampler;
 @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
+@group(0) @binding(6) var videoSampler:   sampler;
 `
+if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`
+}
 frag_start += noise
 frag_start += constants
 
 const shader = `// PRESS CTRL+ENTER TO RELOAD SHADER
-// frame (f32)   - the number of frames of video since launch
-// res (vec2f)   - the width and height of the window in pixels
-// audio (vec3f) - low,mid,and high frequency strengths (scroll down to see button to start)
-// mouse (vec3f) - x position, y position, and left button status
-
+// reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   // create normalized position coordinates in range 0-1
@@ -44,7 +44,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }`
 
 const init = async function() {
-  //await Video.start()
+  await Video.start()
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
@@ -67,7 +67,7 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  //.textures([ Video.element ])
+  .textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ]

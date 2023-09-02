@@ -164,6 +164,21 @@ const seagulls = {
       });
     }
 
+    if( textures !== null ) {
+      textures.forEach( tex => {
+        entries.push({
+          binding:count++,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {}
+        });
+        //entries.push({
+        //  binding:count++,
+        //  visibility: GPUShaderStage.FRAGMENT,
+        //  externalTexture: {}
+        //})
+      });
+    }
+
     if( shouldAddBuffer ) {
       for( let i = 0; i < shouldAddBuffer; i++ ) {
         entries.push({
@@ -235,26 +250,26 @@ const seagulls = {
       entriesB.push( textureuni );
     }
 
-    /*
+    
     if( textures !== null ) {
       textures.forEach( tex => {
         const sampler = device.createSampler({
           magFilter: 'linear',
           minFilter: 'linear'
-        })
+        });
         const sampleruni = {
           binding: count++,
           resource: sampler
-        }
+        };
         //const textureuni = {
         //  binding: count++,
         //  resource: device.importExternalTexture({ source:tex.src })
         //}
 
-        entriesA.push( sampleruni )
-        entriesB.push( sampleruni )
-      })
-    }*/
+        entriesA.push( sampleruni );
+        entriesB.push( sampleruni );
+      });
+    }
 
 
     if( buffers !== null ) {
@@ -327,14 +342,18 @@ const seagulls = {
       externalTexture:{}
     };
 
-    device.createBindGroupLayout({
+    const externalLayout = device.createBindGroupLayout({
       label:'external layout',
       entries:[ externalEntry ]
     });
 
+    const bindGroupLayouts = [ bindGroupLayout ];
+    if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+      bindGroupLayouts.push( externalLayout );
+    }
     const pipelineLayout = device.createPipelineLayout({
       label: "render pipeline layout",
-      bindGroupLayouts: [ bindGroupLayout ]//, externalLayout ],<- XXX enable video
+      bindGroupLayouts
     });
 
     const pipeline = device.createRenderPipeline({
@@ -477,7 +496,7 @@ const seagulls = {
       }]
     };
 
-    device.createBindGroupLayout({
+    const externalLayout = device.createBindGroupLayout({
       label:'external layout',
       entries:[{
         binding:0,
@@ -485,6 +504,30 @@ const seagulls = {
         externalTexture: {}
       }]
     });
+    
+    let resource = null, shouldBind = navigator.userAgent.indexOf('Firefox') === -1;
+
+    //try {
+    //      }catch(e) {
+    //  console.log( e )
+    //  shouldBind = false
+    //}
+    if( shouldBind ) {
+      resource = device.importExternalTexture({
+        source:textures[0]
+      });
+    }
+    let externalTextureBindGroup = null;
+
+    if( shouldBind ) {
+		  externalTextureBindGroup = device.createBindGroup({
+			  layout: externalLayout,
+			  entries: [{
+          binding: 0,
+          resource
+		    }]
+		  }); 
+    }
 
     // additional setup.
 
@@ -500,9 +543,9 @@ const seagulls = {
     pass.setPipeline( pipeline );
     pass.setVertexBuffer( 0, vertexBuffer );
     pass.setBindGroup( 0, bindGroups[ idx++ % 2 ] );
-    //if( shouldBind ) { 
-    //  pass.setBindGroup( 1, externalTextureBindGroup ) 
-    //}
+    if( shouldBind ) { 
+      pass.setBindGroup( 1, externalTextureBindGroup ); 
+    }
     pass.draw(6, count);  
     pass.end();
 
@@ -660,7 +703,7 @@ const seagulls = {
         this.workgroupCount = 128;//Math.round(this.canvas.width / 8)
       }
 
-      this.__computeStages.push( { 
+      this.__computeStages.push({ 
         simPipeline, simBindGroups, step:0, times:1, workgroupCount:this.workgroupCount  
       });
 
@@ -25829,7 +25872,7 @@ fn perlin3(P: vec3f) -> f32 {
 }
 `;
 
-const c = `
+let c = `
 const PI :f32 = 3.14159;
 const PI2:f32 = 6.28318;
 
@@ -25852,10 +25895,6 @@ fn lastframe( pos : vec2f ) -> vec4f {
   return textureSample( backBuffer, backSampler, pos );
 }
 
-fn video( pos : vec2f ) -> vec4f {
-  return vec4(0.); //textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
-}
-
 fn uv( pos: vec2f ) -> vec2f {
   return 2. * (pos.xy / res) - 1.;
 }
@@ -25872,6 +25911,30 @@ fn ms() -> f32 {
   return frame / 60. / 1000.;
 }
 `;
+
+if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+  c += `fn video( pos : vec2f ) -> vec4f {
+  return textureSampleBaseClampToEdge( videoBuffer, videoSampler, pos );
+}
+`;
+}
+
+var constants = c;
+
+const Video = {
+  async start() {
+    const video = document.createElement('video');
+    document.body.appendChild( video );
+
+    if (navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      Video.srcObject = stream;
+      Video.element = video;
+      await video.play();
+    }
+  }
+};
 
 const base00 = '#2E3235', base01 = '#DDDDDD', base02 = '#B9D2FF', base03 = '#b0b0b0', base05 = '#e0e0e0', base06 = '#808080', base07 = '#000000', base08 = '#A54543', base09 = '#fc6d24', base0A = '#fda331', base0B = '#8abeb7', base0C = '#b5bd68', base0D = '#6fb3d2', base0E = '#cc99cc', base0F = '#6987AF';
 const invalid = base09, darkBackground = '#292d30', highlightBackground = base02 + '30', background = base00, tooltipBackground = base01, selection = '#202325', cursor = base01;
@@ -26061,16 +26124,16 @@ let frag_start = `@group(0) @binding(0) var<uniform> frame: f32;
 @group(0) @binding(3) var<uniform> mouse: vec3f;
 @group(0) @binding(4) var backSampler:    sampler;
 @group(0) @binding(5) var backBuffer:     texture_2d<f32>;
+@group(0) @binding(6) var videoSampler:   sampler;
 `;
+if( navigator.userAgent.indexOf('Firefox') === -1 ) {
+frag_start += `@group(1) @binding(0) var videoBuffer:    texture_external;\n`;
+}
 frag_start += n;
-frag_start += c;
+frag_start += constants;
 
 const shader = `// PRESS CTRL+ENTER TO RELOAD SHADER
-// frame (f32)   - the number of frames of video since launch
-// res (vec2f)   - the width and height of the window in pixels
-// audio (vec3f) - low,mid,and high frequency strengths (scroll down to see button to start)
-// mouse (vec3f) - x position, y position, and left button status
-
+// reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   // create normalized position coordinates in range 0-1
@@ -26082,7 +26145,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }`;
 
 const init = async function() {
-  //await Video.start()
+  await Video.start();
   setupEditor();
   setupMouse();
   document.getElementById('audio').onclick = e => Audio.start();
@@ -26105,7 +26168,7 @@ async function runGraphics( code = null) {
     audio:[0,0,0],
     mouse:[0,0,0]
   })
-  //.textures([ Video.element ])
+  .textures([ Video.element ])
   .onframe( ()=> {
     sg.uniforms.frame = frame++;
     sg.uniforms.audio = [ Audio.low, Audio.mid, Audio.high ];
