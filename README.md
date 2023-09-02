@@ -26,10 +26,10 @@ frame : f32 - the numer of frames since the environment was launched
 res : vec2f - the width / height of the environment window
 mouse : vec3f - the x position, y position, and left button status
 audio : vec3f - low, mid, and high frequency values from fft (scroll down and hit the 'audio on' button to start the analysis).
-backbuffer : texture_2d<f32> - stores the previous frame of video
-backsampler: sampler - sampler linked to backbuffer for use in calls to textureSample()  
-videobuffer: texture_external - CURRENTLY BROKEN
-videosampler: sampler - CURRENTLY BROKEN
+backBuffer : texture_2d<f32> - stores the previous frame of video
+backSampler: sampler - sampler linked to backBuffer for use in calls to textureSample()  
+videoBuffer: texture_external - live webcam feed texture CHROME ONLY
+videoSampler: sampler - sampler linked to videoBuffer CHROME ONLY
 
 /* CONSTANTS */
 PI : f32
@@ -43,7 +43,7 @@ uvN( vec2f ) -> vec2f - converts a x/y position in pixels (like what is passed t
 
 lastframe( vec2f ) -> vec4f - expects normalized texture coordinates, and returns a sample from the back buffer
 
-video( vec2f ) -> vec4f - CURRENTLY BROKEN. expects noramlized texture coordinates, and returns a sample from the webcam feed.
+video( vec2f ) -> vec4f - CHROME ONLY. expects noramlized texture coordinates, and returns a sample from the webcam feed.
 
 /* NOISE FUNCTIONS */
 
