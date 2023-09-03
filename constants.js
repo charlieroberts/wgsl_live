@@ -16,28 +16,6 @@ const lime:vec3f = vec3f(0.361,0.969,0.282);
 const teal:vec3f = vec3f(0.396,0.878,0.878);
 const magenta:vec3f = vec3f(1.0, 0.189, 0.745);
 const brown:vec3f = vec3f(0.96, 0.474, 0.227);
-
-fn lastframe( pos : vec2f ) -> vec4f {
-  return textureSample( backBuffer, backSampler, pos );
-}
-
-fn uv( pos: vec2f ) -> vec2f {
-  return 2. * (pos.xy / res) - 1.;
-}
-
-fn uvN( pos: vec2f ) -> vec2f {
-  return pos.xy / res;
-}
-
-fn seconds() -> f32 {
-  return frame / 60.;
-}
-
-fn ms() -> f32 {
-  return frame / 60. / 1000.;
-}
 `
-
-
 
 export default c
