@@ -25895,8 +25895,9 @@ const lime:vec3f = vec3f(0.361,0.969,0.282);
 const teal:vec3f = vec3f(0.396,0.878,0.878);
 const magenta:vec3f = vec3f(1.0, 0.189, 0.745);
 const brown:vec3f = vec3f(0.96, 0.474, 0.227);
+`;
 
-fn lastframe( pos : vec2f ) -> vec4f {
+const v$3 = `fn lastframe( pos : vec2f ) -> vec4f {
   return textureSample( backBuffer, backSampler, pos );
 }
 
@@ -25913,9 +25914,16 @@ fn seconds() -> f32 {
 }
 
 fn ms() -> f32 {
-  return frame / 60. / 1000.;
+  return (frame / 60.) / 1000.;
 }
-`;
+
+fn rotate( _uv : vec2f, angle : f32 ) -> vec2f{
+  var uv : vec2f = _uv - 0.5;
+  uv =  mat2x2<f32>(cos(angle),-sin(angle),
+                     sin(angle),cos(angle)) * uv;
+  uv += 0.5;
+  return uv;
+}`;
 
 const Video = {
   element:null,
@@ -26127,17 +26135,84 @@ const basicDark = [
     /*@__PURE__*/syntaxHighlighting(basicDarkHighlightStyle)
 ];
 
-const shaderDefault = `// PRESS CTRL+ENTER TO RELOAD SHADER
+const v$2 = `// PRESS CTRL+ENTER TO RELOAD SHADER
 // reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
-  // create normalized position coordinates in range 0-1
-  let npos  = pos.xy / res;
+  // get normalized texture coordinates (aka uv) in range 0-1
+  let npos  = uvN( pos.xy );
   let red   = npos.x / mouse.x;
   let green = npos.y / mouse.y;
-  let blue  = .5 + sin( frame / 60. ) * .5;
+  let blue  = .5 + sin( seconds() ) * .5;
   return vec4f( red, green, blue, 1. );
 }`;
+
+const v$1 = `// drive with your mouse
+@fragment 
+fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
+  var p : vec2f = uvN( pos.xy );
+  p.y -= .5;
+
+  var color: f32 = 0.;
+  
+  for( var i:f32 = 1.; i < 15.; i+= 1. ) {
+    p.y += sin( (p.x / i*8.) + (p.x + (frame/((.1+mouse.x)*120.))) * i ) * mouse.y * .5; 
+    color += abs( .00125 / p.y );
+  }
+
+  let out = vec4f( p.x, color, color, 1.);
+  return select( 1.-out, out, mouse.z == 0. );
+}
+`;
+
+const v = `// the ability to use webcams is
+// not currently available in WebGPU for Firefox
+
+@fragment 
+fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
+  let p = uvN( pos.xy );
+  // get current frame from webcam
+  let v = video( p );
+  // get last frame of render
+  let l = lastframe( p );
+  // combine current frame and previous
+  let out = v * .05 + l * .95;
+  
+  return vec4f( out.rgb, 1. );
+}`;
+
+const Demos = {
+  files: {
+    introduction: v$2,
+    waves: v$1,
+    ['simple feedback']: v
+  },
+  init( cm, build, run ) {
+    const sel = document.getElementById( 'demo' );
+    const demoGroup = document.createElement('optgroup');
+    demoGroup.setAttribute( 'label', '----- demos -----' );
+
+    for( let key in Demos.files ) {
+      const opt = document.createElement( 'option' );
+      opt.innerText = key;
+
+      demoGroup.appendChild( opt );
+    }
+    sel.appendChild( demoGroup );
+
+    sel.onchange = e => {
+      const code = Demos.files[ e.target.selectedOptions[0].innerText ];
+
+      run( build( code ) );
+
+      cm.dispatch({
+        changes: { from: 0, to: cm.state.doc.length, insert: code }
+      });
+    };
+  }
+};
+
+const shaderDefault = Demos.files.introduction;
 
 const shaderInit = function( frag=null ) {
   const vertex = `
@@ -26169,7 +26244,7 @@ const shaderInit = function( frag=null ) {
   }
   frag_start += n;
 
-  const s =  vertex + frag_start + __constants + ( frag===null ? shaderDefault : frag );
+  const s =  vertex + frag_start + __constants + v$3 + ( frag===null ? shaderDefault : frag );
   return s
 };
 
@@ -26183,12 +26258,13 @@ const init = async function() {
   setupEditor();
   setupMouse();
   document.getElementById('audio').onclick = e => Audio.start();
+  Demos.init( editor, shaderInit, runGraphics );
   await runGraphics( shader );
 };
 
 window.onload = init;
 
-async function runGraphics( code = null) {
+async function runGraphics( code = null ) {
   let frame = 0;
 
   const sg = await seagulls.init();
