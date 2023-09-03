@@ -2,6 +2,27 @@ html {
   margin:0
 }
 
+&1b {
+  color:#bbb;
+}
+
+a img {
+  filter: invert(100%);
+  width:3rem;
+  height:3rem;
+}
+
+header select {
+  position:relative;
+  margin-top:1rem;
+  vertical-align:top
+}
+header{
+  position:absolute;
+  top:0;
+  right:0;
+}
+
 body {
   margin:0;
   padding:0;
@@ -21,7 +42,7 @@ canvas {
 
 .cm-line {
   display:inline-block;
-  background-color:rgba(0,0,0,.5);
+  background-color:rgba(0,0,0,.65);
   width:fit-content;
 }
 
@@ -30,7 +51,7 @@ canvas {
 }
 
 .cm-activeLine {
-  background-color:rgba(0,0,0,.75) !important;
+  background-color:rgba(0,0,0,.85) !important;
 }
 
 .cm-focused { outline:none !important }
