@@ -7,21 +7,13 @@ import { defaultKeymap } from "@codemirror/commands";
 import { default as Audio } from "./audio.js"
 import { default as noise } from "./noise.js"
 import { default as constants } from "./constants.js"
+import { default as functions } from "./functions.js"
 import { default as Video } from "./video.js"
 import { basicDark } from 'cm6-theme-basic-dark'
+import { default as Demos } from './demos.js'
 
 
-const shaderDefault = `// PRESS CTRL+ENTER TO RELOAD SHADER
-// reference at https://github.com/charlieroberts/wgsl_live
-@fragment 
-fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
-  // create normalized position coordinates in range 0-1
-  let npos  = pos.xy / res;
-  let red   = npos.x / mouse.x;
-  let green = npos.y / mouse.y;
-  let blue  = .5 + sin( frame / 60. ) * .5;
-  return vec4f( red, green, blue, 1. );
-}`
+const shaderDefault = Demos.files.introduction
 
 const shaderInit = function( frag=null ) {
   const vertex = `
@@ -53,7 +45,7 @@ const shaderInit = function( frag=null ) {
   }
   frag_start += noise
 
-  const s =  vertex + frag_start + __constants + ( frag===null ? shaderDefault : frag )
+  const s =  vertex + frag_start + __constants + functions + ( frag===null ? shaderDefault : frag )
   return s
 }
 
@@ -68,12 +60,13 @@ const init = async function() {
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
+  Demos.init( editor, shaderInit, runGraphics )
   await runGraphics( shader )
 }
 
 window.onload = init
 
-async function runGraphics( code = null) {
+async function runGraphics( code = null ) {
   let frame = 0
 
   const sg = await seagulls.init()
