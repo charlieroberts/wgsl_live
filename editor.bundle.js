@@ -26337,8 +26337,11 @@ const init = async function() {
   if( navigator.userAgent.indexOf( 'Firefox' ) === -1 ) {
     await Video.init();
   }
+  
+  let src = localStorage.getItem("src");
+  src = src == null ? shaderDefault : src;
 
-  const shader = shaderInit();
+  const shader = shaderInit( src );
   setupEditor();
   setupMouse();
   document.getElementById('audio').onclick = e => Audio.start();
@@ -26379,7 +26382,7 @@ const setupEditor = function() {
       { 
         key: "Ctrl-Enter", 
         run(e) { 
-          localStorage.setItem("src", e.state.doc.toString())
+          localStorage.setItem("src", e.state.doc.toString());
           runGraphics( shaderInit( e.state.doc.toString() ) );
           return true
         } 
@@ -26387,8 +26390,8 @@ const setupEditor = function() {
     ])
   );
 
-  let src = localStorage.getItem("src")
-  src = src == null ? shaderDefault : src
+  let src = localStorage.getItem("src");
+  src = src == null ? shaderDefault : src;
 
   window.editor = new EditorView({
     doc: src,

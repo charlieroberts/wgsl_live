@@ -55,8 +55,11 @@ const init = async function() {
   if( navigator.userAgent.indexOf( 'Firefox' ) === -1 ) {
     hasVideoPermissions = await Video.init()
   }
+  
+  let src = localStorage.getItem("src")
+  src = src == null ? shaderDefault : src
 
-  const shader = shaderInit()
+  const shader = shaderInit( src )
   setupEditor()
   setupMouse()
   document.getElementById('audio').onclick = e => Audio.start()
