@@ -4,10 +4,12 @@ import { default as waves } from './demos/waves.js'
 import { default as feedback } from './demos/simple_feedback.js'
 import { default as waves_feedback } from './demos/feedback_waves.js'
 import { default as circles } from './demos/circles_of_circles.js'
+import { default as lissajous } from './demos/lissajous.js'
 
 const Demos = {
   files: {
     introduction,
+    lissajous,
     dots,
     waves,
     ['simple feedback']: feedback,

@@ -25897,7 +25897,7 @@ const magenta:vec3f = vec3f(1.0, 0.189, 0.745);
 const brown:vec3f = vec3f(0.96, 0.474, 0.227);
 `;
 
-const v$6 = `fn lastframe( pos : vec2f ) -> vec4f {
+const v$7 = `fn lastframe( pos : vec2f ) -> vec4f {
   return textureSample( backBuffer, backSampler, pos );
 }
 
@@ -26135,7 +26135,7 @@ const basicDark = [
     /*@__PURE__*/syntaxHighlighting(basicDarkHighlightStyle)
 ];
 
-const v$5 = `// PRESS CTRL+ENTER TO RELOAD SHADER
+const v$6 = `// PRESS CTRL+ENTER TO RELOAD SHADER
 // reference at https://github.com/charlieroberts/wgsl_live
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
@@ -26147,7 +26147,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( red, green, blue, 1. );
 }`;
 
-const v$4 = `@fragment 
+const v$5 = `@fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   let p     = uvN( pos.xy );
   let tiled = fract( p * 10. );
@@ -26158,7 +26158,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( 1. - threshold );
 }`;
 
-const v$3 = `// drive with your mouse
+const v$4 = `// drive with your mouse
 @fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   var p : vec2f = uvN( pos.xy );
@@ -26176,7 +26176,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
 }
 `;
 
-const v$2 = `// the ability to use webcams is
+const v$3 = `// the ability to use webcams is
 // not currently available in WebGPU for Firefox
 
 @fragment 
@@ -26192,7 +26192,7 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return vec4f( out.rgb, 1. );
 }`;
 
-const v$1 = `// drive with your mouse
+const v$2 = `// drive with your mouse
 // similar to the waves demo but with
 // the addition of spinning feedback
 @fragment 
@@ -26214,29 +26214,61 @@ fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
   return select( 1.-out, out, mouse.z == 0. );
 }`;
 
+const v$1 = `@fragment 
+fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
+  var p : vec2f = fract( uvN( pos.xy )  * 4. );
+  p.x += sin( floor(seconds() * 60. )) * .35;
+  p.y += cos( floor(seconds() * 60. )) * .35;
+
+  let circles   = distance( p, vec2(.5) );
+  let threshold = 1.-smoothstep( .05,.0525, circles );
+    
+  let feedback  = lastframe( uvN( pos.xy ) * 1.00125 );
+  let out = threshold * .125 + feedback * .975;
+
+  return vec4( out.x+threshold, out.y, out.z+threshold, out.w );
+}`;
+
 const v = `@fragment 
 fn fs( @builtin(position) pos : vec4f ) -> @location(0) vec4f {
+	// play with these values
+  let gain = .25;
+  let freq = 4.3;
+  let freqMod = 1.333 + cos(seconds()*.25) * .15;
+  let gainMod = 1.25 + sin(seconds() * .325) * .5;
+  
   var p : vec2f = uvN( pos.xy );
-    p.x += sin( floor(seconds() * 40. )) * .25;
-    p.y += cos( floor(seconds() * 40. )) * .25;
+  p.x += sin( seconds() * freq  ) * gain;
+  p.y += cos( seconds() * freq * freqMod ) * gain * gainMod;
 
-    let circles   = distance( p, vec2(.5) );
-    let threshold = 1.-smoothstep( .05,.0525, circles );
-    
-    let feedback  = lastframe( uvN( pos.xy) );
-    let out = threshold * .55 + feedback * .95;
+  let circles   = distance( p, vec2(.5) );
+  let threshold = 1. - smoothstep( .01,.015, circles );
+  let colorthreshold = select( 
+    vec3( threshold ),
+    threshold + vec3( sin(seconds()), cos(seconds()), 0. ), 
+    threshold > .01 
+  );
 
-    return vec4( out );
-}`;
+  // feedback fade towards cetner
+  var _uv : vec2f = uvN( pos.xy );
+  _uv += (_uv - vec2f(.5) ) * .005;
+  
+  let feedback = lastframe( _uv  );
+  let out = colorthreshold * .55 + feedback.rgb * .98;
+  
+  return vec4( out, 1. );
+} 
+`;
 
 const Demos = {
   files: {
-    introduction: v$5,
-    dots: v$4,
-    waves: v$3,
-    ['simple feedback']: v$2,
-    ['circles of circles']: v,
-    ['waves feedback'] : v$1,
+    introduction: v$6,
+    lissajous: v,
+    dots: v$5,
+    waves: v$4,
+    ['simple feedback']: v$3,
+    ['circles of circles']: v$1,
+    ['waves feedback'] : v$2,
   },
 
   init( cm, build, run ) {
@@ -26296,7 +26328,7 @@ const shaderInit = function( frag=null ) {
   }
   frag_start += n;
 
-  const s =  vertex + frag_start + __constants + v$6 + ( frag===null ? shaderDefault : frag );
+  const s =  vertex + frag_start + __constants + v$7 + ( frag===null ? shaderDefault : frag );
   return s
 };
 
