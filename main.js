@@ -97,15 +97,19 @@ const setupEditor = function() {
       { 
         key: "Ctrl-Enter", 
         run(e) { 
-          runGraphics( shaderInit( e.state.doc.toString() ) )
+          localStorage.setItem("src", e.state.doc.toString())
+          runGraphics( shaderInit( e.state.doc.toString() ) );
           return true
         } 
       }
     ])
-  )
+  );
+
+  let src = localStorage.getItem("src")
+  src = src == null ? shaderDefault : src
 
   window.editor = new EditorView({
-    doc: shaderDefault,
+    doc: src,
     extensions: [
       basicSetup, 
       wgsl(),
@@ -113,10 +117,10 @@ const setupEditor = function() {
       basicDark
     ],
     parent: document.body,
-  })
+  });
 
-  editor.focus()
-}
+  editor.focus();
+};
 
 let mousex = 0, mousey = 0, mouseclick = 0
 const setupMouse = function() {

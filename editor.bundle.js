@@ -26379,6 +26379,7 @@ const setupEditor = function() {
       { 
         key: "Ctrl-Enter", 
         run(e) { 
+          localStorage.setItem("src", e.state.doc.toString())
           runGraphics( shaderInit( e.state.doc.toString() ) );
           return true
         } 
@@ -26386,8 +26387,11 @@ const setupEditor = function() {
     ])
   );
 
+  let src = localStorage.getItem("src")
+  src = src == null ? shaderDefault : src
+
   window.editor = new EditorView({
-    doc: shaderDefault,
+    doc: src,
     extensions: [
       basicSetup, 
       wgsl(),
